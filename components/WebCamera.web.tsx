@@ -47,10 +47,12 @@ export const WebCamera = forwardRef<WebCameraHandle, Props>(({ onError }, ref) =
         const video = videoRef.current;
         if (!video || !video.videoWidth) { resolve(null); return; }
 
+        const MAX = 1024;
+        const scale = Math.min(1, MAX / Math.max(video.videoWidth, video.videoHeight));
         const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext("2d")!.drawImage(video, 0, 0);
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         // Stop stream so browser camera light turns off immediately
         streamRef.current?.getTracks().forEach((t) => t.stop());

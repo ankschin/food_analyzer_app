@@ -5,12 +5,40 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { router } from "expo-router";
 import { useAnalyze } from "../hooks/useAnalyze";
 import { useSessionStore } from "../store/sessionStore";
 import { WebCamera, WebCameraHandle } from "../components/WebCamera.web";
 
 const { width } = Dimensions.get("window");
+
+const MAX_DIM = 1024;
+
+async function compressImage(base64: string, uri?: string): Promise<string> {
+  if (Platform.OS === "web") {
+    return new Promise((resolve) => {
+      const img = new (window as any).Image();
+      img.onload = () => {
+        const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82).split(",")[1]);
+      };
+      img.src = "data:image/jpeg;base64," + base64;
+    });
+  }
+  // Native: resize via expo-image-manipulator using the file URI
+  if (!uri) return base64;
+  const result = await ImageManipulator.manipulateAsync(
+    uri,
+    [{ resize: { width: MAX_DIM } }],
+    { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+  );
+  return result.base64 ?? base64;
+}
 
 function parseCalories(cal: string | number): number {
   if (typeof cal === "number") return cal;
@@ -51,12 +79,13 @@ export default function CaptureScreen() {
       }
     } else {
       if (!cameraRef.current) { setCapturing(false); return; }
-      const photo = await cameraRef.current.takePictureAsync({ base64: true });
+      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.8 });
       setShowCamera(false);
       setCapturing(false);
       if (photo) {
         setPreviewUri(photo.uri);
-        submitImage(photo.base64!, photo.uri);
+        const compressed = await compressImage(photo.base64!, photo.uri);
+        submitImage(compressed, photo.uri);
       }
     }
   };
@@ -75,7 +104,8 @@ export default function CaptureScreen() {
         setErrorMsg("Could not read image data. Try a different image.");
         return;
       }
-      submitImage(asset.base64, asset.uri);
+      const compressed = await compressImage(asset.base64, asset.uri);
+      submitImage(compressed, asset.uri);
     }
   };
 
