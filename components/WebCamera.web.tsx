@@ -15,8 +15,13 @@ export const WebCamera = forwardRef<WebCameraHandle, Props>(({ onError }, ref) =
   useEffect(() => {
     let active = true;
 
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } })
+    const startCamera = (facingMode: string) =>
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+
+    startCamera("environment")
+      .catch(() => startCamera("user"))
       .then((stream) => {
         if (!active) { stream.getTracks().forEach((t) => t.stop()); return; }
         streamRef.current = stream;
