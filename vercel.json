@@ -1,6 +1,6 @@
 {
   "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "npx expo export --platform web",
+  "buildCommand": "mkdir -p node_modules/.cache/nativewind && npx tailwindcss -i ./global.css -o ./node_modules/.cache/nativewind/global.css && npx expo export --platform web",
   "outputDirectory": "dist",
   "framework": null,
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
